@@ -5,6 +5,39 @@ from __init__ import __version__
 
 docker_client = None
 
+
+def _strip_scheme(value):
+	"""Remove URL schemes like https:// from registry/image strings."""
+	if not value:
+		return ""
+	value = value.strip()
+	return re.sub(r'^[a-zA-Z]+://', '', value)
+
+
+def sanitize_registry(registry):
+	"""Normalize registry strings (strip schemes/trailing slashes)."""
+	registry = _strip_scheme(registry)
+	return registry.rstrip('/')
+
+
+def sanitize_image_reference(image_name):
+	"""Normalize image references by stripping schemes and duplicate slashes."""
+	image_name = _strip_scheme(image_name)
+	if not image_name:
+		return ""
+	return re.sub(r'/+', '/', image_name)
+
+
+def build_full_image_name(registry, image_name):
+	"""Combine registry and image name safely, avoiding schemes and duplicates."""
+	image_name = sanitize_image_reference(image_name)
+	registry = sanitize_registry(registry)
+	if registry:
+		if image_name.startswith(f"{registry}/"):
+			return image_name
+		return f"{registry}/{image_name}" if image_name else registry
+	return image_name
+
 def init_docker():
 	global docker_client
 	
@@ -80,14 +113,11 @@ def force_pull_required_images():
 		for droplet in droplets:
 			if droplet.container_docker_image is None:
 				continue
-				
-			# Construct full image name
-			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
-				registry = droplet.container_docker_registry.rstrip("/")
-				image = f"{registry}/{droplet.container_docker_image}"
-			else:
-				image = droplet.container_docker_image
-				
+			
+			image = build_full_image_name(droplet.container_docker_registry, droplet.container_docker_image)
+			if not image:
+				continue
+			
 			required_images.append({
 				"name": image,
 				"description": f"Droplet: {droplet.display_name}"
@@ -143,14 +173,11 @@ def pull_images():
 		for droplet in droplets:
 			if droplet.container_docker_image is None:
 				continue
-				
-			# Construct full image name
-			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
-				registry = droplet.container_docker_registry.rstrip("/")
-				image = f"{registry}/{droplet.container_docker_image}"
-			else:
-				image = droplet.container_docker_image
-				
+		
+			image = build_full_image_name(droplet.container_docker_registry, droplet.container_docker_image)
+			if not image:
+				continue
+		
 			required_images.append({
 				"name": image,
 				"description": f"Droplet: {droplet.display_name}"
@@ -189,12 +216,7 @@ def check_image_exists(registry, image_name):
 		return False
 	
 	try:
-		# Construct full image name
-		if registry and "ghcr.io" not in registry:
-			registry = registry.rstrip("/")
-			full_image = f"{registry}/{image_name}"
-		else:
-			full_image = image_name
+		full_image = build_full_image_name(registry, image_name)
 			
 		# Check if image exists locally
 		images = docker_client.images.list()
@@ -216,12 +238,7 @@ def pull_single_image(registry, image_name):
 		if not image_name or not image_name.strip():
 			return False, "Image name cannot be empty"
 		
-		# Construct full image name
-		if registry and "ghcr.io" not in registry:
-			registry = registry.rstrip("/")
-			full_image = f"{registry}/{image_name}"
-		else:
-			full_image = image_name
+		full_image = build_full_image_name(registry, image_name)
 			
 		# Extract tag from image name - handle multiple colons properly
 		if ":" in full_image:
@@ -266,14 +283,11 @@ def get_images_status():
 		for droplet in droplets:
 			if droplet.container_docker_image is None:
 				continue
-				
-			# Construct full image name
-			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
-				registry = droplet.container_docker_registry.rstrip("/")
-				full_image = f"{registry}/{droplet.container_docker_image}"
-			else:
-				full_image = droplet.container_docker_image
-				
+			
+			full_image = build_full_image_name(droplet.container_docker_registry, droplet.container_docker_image)
+			if not full_image:
+				continue
+			
 			required_images.append({
 				"id": droplet.id,
 				"name": droplet.display_name,
