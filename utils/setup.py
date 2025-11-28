@@ -74,7 +74,7 @@ def create_default_users():
 def create_default_registry():
 	"""Create default registry if none exists"""
 	if Registry.query.count() == 0:
-		hostlife_registry = Registry(url="https://registry.hostlife.org")
+		hostlife_registry = Registry(url="https://zwpseudo.github.io/official-registry/")
 		db.session.add(hostlife_registry)
 		db.session.commit()
 
