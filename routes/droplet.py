@@ -133,7 +133,7 @@ def request_new_instance():
 	# Check if docker image is downloaded
 	images = utils.docker.docker_client.images.list()
 	image_name = droplet.container_docker_image
-	if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+	if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
 		image_name = droplet.container_docker_registry + "/" + image_name
 
 	image_exists = False

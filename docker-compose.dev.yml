@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: web.Dockerfile
-    image: zwpseudo/hostlife:develop
+    image: zwpseudo/hostlife:latest
     container_name: hostlife-web-dev
     restart: unless-stopped
     volumes:

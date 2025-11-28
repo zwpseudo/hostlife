@@ -82,7 +82,7 @@ def force_pull_required_images():
 				continue
 				
 			# Construct full image name
-			if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
 				registry = droplet.container_docker_registry.rstrip("/")
 				image = f"{registry}/{droplet.container_docker_image}"
 			else:
@@ -145,7 +145,7 @@ def pull_images():
 				continue
 				
 			# Construct full image name
-			if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
 				registry = droplet.container_docker_registry.rstrip("/")
 				image = f"{registry}/{droplet.container_docker_image}"
 			else:
@@ -190,7 +190,7 @@ def check_image_exists(registry, image_name):
 	
 	try:
 		# Construct full image name
-		if registry and "docker.io" not in registry:
+		if registry and "ghcr.io" not in registry:
 			registry = registry.rstrip("/")
 			full_image = f"{registry}/{image_name}"
 		else:
@@ -217,7 +217,7 @@ def pull_single_image(registry, image_name):
 			return False, "Image name cannot be empty"
 		
 		# Construct full image name
-		if registry and "docker.io" not in registry:
+		if registry and "ghcr.io" not in registry:
 			registry = registry.rstrip("/")
 			full_image = f"{registry}/{image_name}"
 		else:
@@ -268,7 +268,7 @@ def get_images_status():
 				continue
 				
 			# Construct full image name
-			if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
 				registry = droplet.container_docker_registry.rstrip("/")
 				full_image = f"{registry}/{droplet.container_docker_image}"
 			else:
