@@ -1,0 +1,532 @@
+import os
+import re
+import time
+import base64
+import json
+from typing import Tuple
+import docker
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from flask import Blueprint, jsonify, request, render_template, redirect, make_response, send_from_directory
+from flask_login import login_required, current_user
+import psutil
+from __init__ import db, __version__
+from models.droplet import Droplet, DropletInstance
+from models.user import User
+from utils.logger import log
+import utils.docker
+import threading
+
+def timeout_wrapper(func, timeout_seconds=300):
+	"""Execute a function with a timeout, returning (success, result/error)"""
+	result = [None]
+	error = [None]
+	completed_event = threading.Event()
+	
+	def target():
+		try:
+			result[0] = func()
+		except Exception as e:
+			error[0] = str(e)
+		finally:
+			completed_event.set()
+	
+	thread = threading.Thread(target=target)
+	thread.daemon = True
+	thread.start()
+	
+	# Wait for completion or timeout using Event
+	if completed_event.wait(timeout=timeout_seconds):
+		if error[0]:
+			return False, error[0]
+		return True, result[0]
+	else:
+		return False, "Operation timed out"
+
+droplet_bp = Blueprint('droplet', __name__)
+
+@droplet_bp.route('/api/droplets', methods=['GET'])
+@login_required
+def get_droplets():
+	droplets = Droplet.query.all()
+	droplets = sorted(droplets, key=lambda x: x.display_name)
+ 
+	response = {
+		"success": True,
+		"droplets": []
+	}
+ 
+	for droplet in droplets:
+		response["droplets"].append({
+			"id": droplet.id,
+			"display_name": droplet.display_name,
+			"description": droplet.description,
+			"image_path": droplet.image_path,
+			"droplet_type": droplet.droplet_type,
+			"container_docker_image": droplet.container_docker_image,
+			"container_docker_registry": droplet.container_docker_registry,
+			"container_cores": droplet.container_cores,
+			"container_memory": droplet.container_memory,
+			"server_ip": droplet.server_ip,
+			"server_port": droplet.server_port,
+		})
+ 
+	return jsonify(response)
+
+@droplet_bp.route('/api/instances', methods=['GET'])
+@login_required
+def get_instances():
+	instances = DropletInstance.query.filter_by(user_id=current_user.id).all()
+ 
+	response = {
+		"success": True,
+		"instances": []
+	}
+ 
+	for instance in instances:
+		droplet = Droplet.query.filter_by(id=instance.droplet_id).first()
+		response["instances"].append({
+			"id": instance.id,
+			"created_at": instance.created_at,
+			"updated_at": instance.updated_at,
+			"droplet": {
+				"id": droplet.id,
+				"display_name": droplet.display_name,
+				"description": droplet.description,
+				"image_path": droplet.image_path,
+				"droplet_type": droplet.droplet_type,
+				"container_docker_image": droplet.container_docker_image,
+				"container_docker_registry": droplet.container_docker_registry,
+				"container_cores": droplet.container_cores,
+				"container_memory": droplet.container_memory,
+				"server_ip": droplet.server_ip,
+				"server_port": droplet.server_port,
+			}
+		})
+ 
+	return jsonify(response)
+
+@droplet_bp.route('/api/instance/request', methods=['POST'])
+@login_required
+def request_new_instance():
+	droplet_id = request.json.get('droplet_id')
+	droplet = Droplet.query.filter_by(id=droplet_id).first()
+	if not droplet:
+		return jsonify({"success": False, "error": "Droplet not found"}), 404
+
+	# Check if droplet is a guacamole droplet
+	isGuacDroplet: bool = False
+	if droplet.droplet_type in ["vnc", "rdp", "ssh"]:
+		isGuacDroplet = True
+
+	# Check if system has enough resources to request this droplet, guacamole droplets do not have resource checks
+	if not isGuacDroplet:
+		success, error = check_resources(droplet)
+		if not success:
+			return jsonify({"success": False, "error": error}), 400
+ 
+	# Check if docker client is available
+	if not utils.docker.docker_client:
+		log("ERROR", "Docker client not available")
+		return jsonify({"success": False, "error": "Docker service is not available"}), 500
+
+	# Check if docker image is downloaded
+	images = utils.docker.docker_client.images.list()
+	image_name = droplet.container_docker_image
+	if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+		image_name = droplet.container_docker_registry + "/" + image_name
+
+	image_exists = False
+	for image in images:
+		if isGuacDroplet and f"zwpseudo/hostlife-guac:{__version__}" in image.tags:
+			image_exists = True
+			break
+
+		if image_name in image.tags:
+			image_exists = True
+			break
+		
+	if not image_exists:
+		log("WARNING", f"Docker image {droplet.container_docker_image} not found. Please wait a few minutes and try again.")
+		return jsonify({"success": False, "error": "Docker image not found. Image might still be downloading."}), 400
+	
+		"""
+		try:
+			# Use the existing pull_single_image function with timeout
+			def pull_with_timeout():
+				return utils.docker.pull_single_image(
+					droplet.container_docker_registry, 
+					droplet.container_docker_image
+				)
+			
+			success, message = timeout_wrapper(pull_with_timeout, timeout_seconds=300)
+			
+			if not success:
+				if "timed out" in message:
+					return jsonify({"success": False, "error": "Image download timed out. Please try again or download manually from the admin panel."}), 408
+				else:
+					log("ERROR", f"Failed to pull Docker image {image_name}: {message}")
+					return jsonify({"success": False, "error": f"Failed to download Docker image. Error: {message}"}), 400
+			
+			log("INFO", f"Successfully pulled Docker image {image_name}")
+		except Exception as e:
+			log("ERROR", f"Failed to pull Docker image {image_name}: {str(e)}")
+			return jsonify({"success": False, "error": f"Failed to download Docker image. Error: {str(e)}"}), 400
+		"""
+
+	# Create a new instance
+	instance = DropletInstance(droplet_id=droplet_id, user_id=current_user.id)
+	db.session.add(instance)
+	db.session.commit()
+ 
+	# Create a docker container
+	log("INFO", f"Creating new instance for user {current_user.username} with droplet {droplet.display_name}")
+ 
+	name = f"hostlife_generated_{instance.id}"
+ 
+	request_resolution = request.json.get('resolution')
+	if len(request_resolution) < 10 and re.match(r"[0-9]+x[0-9]+", request_resolution):
+		resolution = request_resolution
+	else:
+		resolution = "1280x720"
+  
+	# Persistent Profile
+	mount = None
+	if droplet.container_persistent_profile_path and droplet.container_persistent_profile_path != "" and not isGuacDroplet:
+		
+		profilePath = droplet.container_persistent_profile_path
+  
+		# Replace variables
+		profilePath = profilePath.replace("{user_id}", str(current_user.id))
+		profilePath = profilePath.replace("{username}", current_user.username)
+		profilePath = profilePath.replace("{droplet_id}", str(droplet_id))
+  
+		# Ensure path ends with /
+		if profilePath[-1] != "/":
+			profilePath += "/"
+
+		mount = docker.types.Mount(target="/home/hostlife-user", source=profilePath, type="bind", consistency="[r]private")
+  
+		# Hack: the first time the mount is created, the container will crash, so we start the container twice
+		# this should be fixed in the core droplets
+		if not os.path.exists(profilePath + ".bashrc"):
+			try:
+				container = utils.docker.docker_client.containers.run(
+					image=image_name,
+					detach=True,
+					mem_limit="512000000",
+					cpu_shares=int(droplet.container_cores * 1024),
+					mounts=[mount],
+				)
+				time.sleep(1)
+				container.stop()
+				container.remove(force=True)
+			except Exception as e:
+				log("ERROR", f"Error creating profile directory structure: {str(e)}")
+				db.session.delete(instance)
+				db.session.commit()
+				return jsonify({"success": False, "error": "Failed to setup persistent profile"}), 500
+	
+	# Create the container
+	try:
+		if not isGuacDroplet:
+			container = utils.docker.docker_client.containers.run(
+				image=image_name,
+				name=name,
+				environment={"DISPLAY": ":1", "VNC_PW": current_user.auth_token, "VNC_RESOLUTION": resolution},
+				detach=True,
+				network="hostlife_default_network",
+				mem_limit=f"{droplet.container_memory}000000",
+				cpu_shares=int(droplet.container_cores * 1024),
+				mounts=[mount] if mount else None,
+			)
+		else: # Guacamole droplet
+			container = utils.docker.docker_client.containers.run(
+				image=f"zwpseudo/hostlife-guac:{__version__}",
+				name=name,
+				environment={"GUAC_KEY": current_user.auth_token[:32]},
+				detach=True,
+				network="hostlife_default_network",
+			)
+ 
+		log("INFO", f"Instance created for user {current_user.username} with droplet {droplet.display_name}")
+ 
+		# Wait for container to start and verify it's running with timeout
+		max_wait_time = 30  # Maximum wait time in seconds
+		check_interval = 1  # Check every 1 second
+		waited_time = 0
+		
+		while waited_time < max_wait_time:
+			time.sleep(check_interval)
+			waited_time += check_interval
+			
+			try:
+				container.reload()
+				if container.status == 'running':
+					log("INFO", f"Container {name} is running after {waited_time} seconds")
+					break
+				elif container.status in ['exited', 'dead']:
+					log("ERROR", f"Container {name} failed to start, status: {container.status}")
+					# Get container logs for debugging
+					try:
+						logs = container.logs().decode('utf-8')[-1000:]  # Last 1000 chars
+						log("ERROR", f"Container logs: {logs}")
+					except:
+						pass
+					container.remove(force=True)
+					db.session.delete(instance)
+					db.session.commit()
+					return jsonify({"success": False, "error": f"Container failed to start (status: {container.status})"}), 500
+			except Exception as e:
+				log("ERROR", f"Error checking container status: {str(e)}")
+				container.remove(force=True)
+				db.session.delete(instance)
+				db.session.commit()
+				return jsonify({"success": False, "error": "Failed to verify container status"}), 500
+		
+		# Final check if we timed out
+		if waited_time >= max_wait_time:
+			log("ERROR", f"Container {name} startup timed out after {max_wait_time} seconds")
+			try:
+				logs = container.logs().decode('utf-8')[-1000:]  # Last 1000 chars
+				log("ERROR", f"Container logs: {logs}")
+			except:
+				pass
+			container.remove(force=True)
+			db.session.delete(instance)
+			db.session.commit()
+			return jsonify({"success": False, "error": "Container startup timed out"}), 500
+ 
+		# Create nginx config - get fresh container info and handle network name variations
+		try:
+			container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
+			networks = container.attrs['NetworkSettings']['Networks']
+			
+			# Try different network name variations
+			ip = None
+			for network_name in ['hostlife_default_network', 'default_network', 'bridge']:
+				if network_name in networks and networks[network_name]['IPAddress']:
+					ip = networks[network_name]['IPAddress']
+					log("INFO", f"Found container IP {ip} on network {network_name}")
+					break
+			
+			if not ip:
+				log("ERROR", f"Could not find IP address for container {name}")
+				container.remove(force=True)
+				db.session.delete(instance)
+				db.session.commit()
+				return jsonify({"success": False, "error": "Could not determine container IP address"}), 500
+				
+		except Exception as e:
+			log("ERROR", f"Error getting container network info: {str(e)}")
+			container.remove(force=True)
+			db.session.delete(instance)
+			db.session.commit()
+			return jsonify({"success": False, "error": "Failed to get container network information"}), 500
+
+		# Generate nginx configuration
+		nginx_config = generate_nginx_config(instance, droplet, ip, current_user)
+ 
+		try:
+			write_nginx_config(instance, nginx_config)
+		except Exception as e:
+			log("ERROR", f"Error writing nginx config: {str(e)}")
+			container.remove(force=True)
+			db.session.delete(instance)
+			db.session.commit()
+			return jsonify({"success": False, "error": "Failed to write nginx configuration"}), 500
+		
+		reload_nginx()
+ 
+	except Exception as e:
+		log("ERROR", f"Error creating container for user {current_user.username}: {str(e)}")
+		# Cleanup on failure
+		try:
+			if 'container' in locals():
+				container.remove(force=True)
+		except:
+			pass
+		db.session.delete(instance)
+		db.session.commit()
+		return jsonify({"success": False, "error": f"Failed to create container: {str(e)}"}), 500
+
+	return jsonify({"success": True, "instance_id": instance.id})
+
+def check_resources(droplet: Droplet) -> Tuple[bool, str]:
+	instances = DropletInstance.query.all()
+		
+	# Collect all droplet IDs and fetch droplets in a single query to avoid N+1 problem
+	droplet_ids = [instance.droplet_id for instance in instances]
+	droplets = Droplet.query.filter(Droplet.id.in_(droplet_ids)).all() if droplet_ids else []
+	droplet_dict = {droplet.id: droplet for droplet in droplets}
+	
+	total_allocated_memory = 0
+	total_allocated_cores = 0
+	for instance in instances:
+		instance_droplet = droplet_dict.get(instance.droplet_id)
+		if instance_droplet:
+			total_allocated_cores += instance_droplet.container_cores
+			total_allocated_memory += instance_droplet.container_memory
+	
+	# Get system resources
+	system_cores = os.cpu_count()
+	total_memory = psutil.virtual_memory().total / 1024 / 1024  # Convert to MB
+	
+	# Calculate what would be used after adding this droplet
+	projected_memory_usage = total_allocated_memory + droplet.container_memory
+	projected_core_usage = total_allocated_cores + droplet.container_cores
+	
+	# Apply reasonable safety margins and allow oversubscription for CPU
+	# CPU: Allow 2x oversubscription (containers share CPU efficiently via CPU shares)
+	# Memory: Use 85% of total memory to leave room for system operations
+	max_allowed_memory = total_memory * 0.85
+	max_allowed_cores = system_cores * 2.0
+	
+	if projected_memory_usage > max_allowed_memory:
+		log("ERROR", f"Insufficient memory for user {current_user.username} to request droplet {droplet.display_name} - would use {projected_memory_usage}MB of {max_allowed_memory}MB allowed")
+		return False, "Insufficient memory to start this droplet"
+	
+	if projected_core_usage > max_allowed_cores:
+		log("ERROR", f"Insufficient CPU cores for user {current_user.username} to request droplet {droplet.display_name} - would use {projected_core_usage} of {max_allowed_cores} cores allowed")
+		return False, "Insufficient CPU cores to start this droplet"
+	
+	return True, ""
+
+def generate_nginx_config(instance: DropletInstance, droplet: Droplet, ip: str, user: User) -> str:
+	authHeader = base64.b64encode(b'hostlife_user:' + user.auth_token.encode()).decode('utf-8')
+	 
+	if droplet.droplet_type == "container":
+		nginx_config = open(f"config/nginx/container_template.conf", "r").read()
+	else: # Guacamole droplet
+		nginx_config = open(f"config/nginx/guac_template.conf", "r").read()
+
+	nginx_config = nginx_config.replace("{ip}", ip)
+	nginx_config = nginx_config.replace("{authHeader}", authHeader)
+	nginx_config = nginx_config.replace("{instance_id}", instance.id)
+
+	return nginx_config
+
+def write_nginx_config(instance: DropletInstance, nginx_config: str):
+	with open(f"/hostlife/nginx/containers.d/{instance.id}.conf", "w") as f:
+		f.write(nginx_config)
+
+def reload_nginx():
+	nginx_container = utils.docker.docker_client.containers.get("hostlife-nginx")
+	result = nginx_container.exec_run("nginx -s reload")
+	if result.exit_code != 0:
+		log("WARNING", f"Failed to reload Nginx: {result.output.decode()}")
+
+@droplet_bp.route('/api/droplet/<int:droplet_id>/pull-image', methods=['POST'])
+@login_required
+def pull_droplet_image(droplet_id):
+	"""Manually pull a droplet's Docker image"""
+	droplet = Droplet.query.filter_by(id=droplet_id).first()
+	if not droplet:
+		return jsonify({"success": False, "error": "Droplet not found"}), 404
+
+	if not droplet.container_docker_image:
+		return jsonify({"success": False, "error": "Droplet has no Docker image configured"}), 400
+
+	# Check if docker client is available
+	if not utils.docker.docker_client:
+		log("ERROR", "Docker client not available")
+		return jsonify({"success": False, "error": "Docker service is not available"}), 500
+
+	try:
+		# Use the existing pull_single_image function
+		success, message = utils.docker.pull_single_image(
+			droplet.container_docker_registry, 
+			droplet.container_docker_image
+		)
+		
+		if success:
+			return jsonify({"success": True, "message": message})
+		else:
+			return jsonify({"success": False, "error": message}), 500
+			
+	except Exception as e:
+		log("ERROR", f"Error pulling image for droplet {droplet_id}: {str(e)}")
+		return jsonify({"success": False, "error": f"Failed to pull image: {str(e)}"}), 500
+
+def generate_guac_token(droplet: Droplet, user: User) -> str:
+	"""Generate a token for the guacamole instance"""
+	guac_token = {
+		"connection": {
+			"type": droplet.droplet_type,
+			"settings": {
+				"hostname": droplet.server_ip,
+				"username": droplet.server_username,
+				"password": droplet.server_password,
+				"port": droplet.server_port,
+			}
+		},
+	}
+ 
+	def encrypt_token(token, auth_token):
+		iv = os.urandom(16)  # 16 bytes for AES
+		auth_token = auth_token[:32]
+		cipher = AES.new(auth_token, AES.MODE_CBC, iv)
+  
+		# Convert value to JSON and pad it
+		padded_data = pad(json.dumps(token).encode(), AES.block_size)
+
+		# Encrypt data
+		encrypted_data = cipher.encrypt(padded_data)
+
+		# Encode the IV and encrypted data
+		data = {
+			'iv': base64.b64encode(iv).decode('utf-8'),
+			'value': base64.b64encode(encrypted_data).decode('utf-8')
+		}
+
+		# Convert the data dictionary to JSON and then encode it
+		json_data = json.dumps(data)
+		return base64.b64encode(json_data.encode()).decode('utf-8')
+
+	return encrypt_token(guac_token, user.auth_token.encode())
+ 
+@droplet_bp.route('/droplet/<string:instance_id>', methods=['GET'])
+@login_required
+def droplet(instance_id: str):
+	instance = DropletInstance.query.filter_by(id=instance_id).first()
+	if not instance:
+		return redirect("/")
+
+	if instance.user_id != current_user.id:
+		return redirect("/")
+
+	using_guac = False
+	guac_token = None
+	droplet = Droplet.query.filter_by(id=instance.droplet_id).first()
+	if droplet.droplet_type in ["vnc", "rdp", "ssh"]:
+		using_guac = True
+		guac_token = generate_guac_token(droplet, current_user)
+
+	return render_template('droplet.html', instance_id=instance_id, droplet=droplet, guacamole=using_guac, guac_token=guac_token)
+
+@droplet_bp.route('/api/instance/<string:instance_id>/destroy', methods=['GET'])
+@login_required
+def stop_instance(instance_id: str):
+	instance = DropletInstance.query.filter_by(id=instance_id).first()
+	if not instance:
+		return jsonify({"success": False, "error": "Instance not found"}), 404
+
+	if instance.user_id != current_user.id:
+		return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+	try:
+		if utils.docker.docker_client:
+			container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
+			container.remove(force=True)
+	except Exception as e:
+		log("ERROR", f"Error removing container: {str(e)}")
+		pass
+  
+	# Delete nginx config
+	if os.path.exists(f"/hostlife/nginx/containers.d/{instance.id}.conf"):
+		os.remove(f"/hostlife/nginx/containers.d/{instance.id}.conf")
+	
+	db.session.delete(instance)
+	db.session.commit()
+ 
+	return jsonify({"success": True})

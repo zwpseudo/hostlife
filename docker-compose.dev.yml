@@ -1,0 +1,44 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: web.Dockerfile
+    image: zwpseudo/hostlife:develop
+    container_name: hostlife-web-dev
+    restart: unless-stopped
+    volumes:
+      - .:/hostlife
+      - hostlife-data:/hostlife/data
+      - hostlife-nginx-data:/hostlife/nginx
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - FLASK_APP=run.py
+      - FLASK_DEBUG=1
+    ports:
+      - "5000"
+    networks:
+      - default_network
+    command: python run.py --debug
+
+  nginx:
+    image: nginx:1.28-alpine
+    container_name: hostlife-nginx
+    restart: unless-stopped
+    volumes:
+      - hostlife-nginx-data:/etc/nginx/conf.d
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+    networks:
+      - default_network
+
+networks:
+  default_network:
+    driver: bridge
+
+volumes:
+  hostlife-data:
+    external: false
+  hostlife-nginx-data:
+    external: false
