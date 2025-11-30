@@ -41,7 +41,9 @@
     <body>
         <div class="container">
             <nav class="nav">
-                <h1>hostlife</h1>
+                <a class="nav-brand" href="/">
+                    <img src="/static/img/logoPLight.svg" alt="Dashboard home" class="nav-logo">
+                </a>
                 
                 <div class="nav-links">
                     {% if current_user.has_permission("perm_admin_panel") %}

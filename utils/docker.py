@@ -102,7 +102,7 @@ def force_pull_required_images():
 		required_images = [
 			# Guacamole image (always required)
 			{
-				"name": f"zwpseudo/hostlife-guac:{__version__}",
+				"name": f"ghcr.io/zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
@@ -163,7 +163,7 @@ def pull_images():
 		required_images = [
 			# Guacamole image (always required)
 			{
-				"name": f"zwpseudo/hostlife-guac:{__version__}",
+				"name": f"ghcr.io/zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
@@ -273,7 +273,7 @@ def get_images_status():
 			{
 				"id": "guac",
 				"name": "Guacamole",
-				"image": f"zwpseudo/hostlife-guac:{__version__}",
+				"image": f"ghcr.io/zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
