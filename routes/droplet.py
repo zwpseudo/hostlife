@@ -130,19 +130,25 @@ def request_new_instance():
 		log("ERROR", "Docker client not available")
 		return jsonify({"success": False, "error": "Docker service is not available"}), 500
 
+	# Figure out which Docker image should exist locally
+	guac_image = f"ghcr.io/zwpseudo/hostlife-guac:{__version__}"
+	image_name = utils.docker.build_full_image_name(
+		droplet.container_docker_registry,
+		droplet.container_docker_image
+	)
+	if not image_name and not isGuacDroplet:
+		log("ERROR", f"Droplet {droplet.display_name} has no Docker image configured")
+		return jsonify({"success": False, "error": "Droplet is missing its Docker image reference"}), 500
+
 	# Check if docker image is downloaded
 	images = utils.docker.docker_client.images.list()
-	image_name = droplet.container_docker_image
-	if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
-		image_name = droplet.container_docker_registry + "/" + image_name
-
 	image_exists = False
 	for image in images:
-		if isGuacDroplet and f"zwpseudo/hostlife-guac:{__version__}" in image.tags:
+		if isGuacDroplet and guac_image in image.tags:
 			image_exists = True
 			break
 
-		if image_name in image.tags:
+		if image_name and image_name in image.tags:
 			image_exists = True
 			break
 		
@@ -242,7 +248,7 @@ def request_new_instance():
 			)
 		else: # Guacamole droplet
 			container = utils.docker.docker_client.containers.run(
-				image=f"zwpseudo/hostlife-guac:{__version__}",
+				image=guac_image,
 				name=name,
 				environment={"GUAC_KEY": current_user.auth_token[:32]},
 				detach=True,
