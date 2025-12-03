@@ -74,14 +74,14 @@ def create_default_users():
 def create_default_registry():
 	"""Create default registry if none exists"""
 	if Registry.query.count() == 0:
-		flowcase_registry = Registry(url="https://registry.flowcase.org")
-		db.session.add(flowcase_registry)
+		hostlife_registry = Registry(url="https://registry.hostlife.org")
+		db.session.add(hostlife_registry)
 		db.session.commit()
 
 def initialize_app(app):
 	"""Initialize the application for first run"""
 	with app.app_context():
-		log("INFO", "Initializing Flowcase...")
+		log("INFO", "Initializing Hostlife...")
 		
 		os.makedirs("data", exist_ok=True)
 		
@@ -95,4 +95,4 @@ def initialize_app(app):
 			create_default_users()
 			create_default_registry()
 		
-		log("INFO", "Flowcase initialized.") 
+		log("INFO", "Hostlife initialized.") 

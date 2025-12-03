@@ -62,17 +62,17 @@ def cleanup_containers(app=None):
 		
 		# Get all containers
 		containers = docker_client.containers.list(all=True)
-		flowcase_containers = 0
+		hostlife_containers = 0
 		orphaned_containers = 0
 		restarted_containers = 0
 		
 		for container in containers:
-			regex = re.compile(r"flowcase_generated_([a-z0-9]+(-[a-z0-9]+)+)", re.IGNORECASE)
+			regex = re.compile(r"hostlife_generated_([a-z0-9]+(-[a-z0-9]+)+)", re.IGNORECASE)
 			match = regex.match(container.name)
 			if match:
-				flowcase_containers += 1
+				hostlife_containers += 1
 				# Extract instance ID from container name
-				container_instance_id = container.name.replace("flowcase_generated_", "")
+				container_instance_id = container.name.replace("hostlife_generated_", "")
 				
 				if app:
 					# If container doesn't have a corresponding instance in the database, remove it
@@ -104,25 +104,25 @@ def cleanup_containers(app=None):
 						except Exception as e:
 							print(f"Error restarting container {container.name}: {str(e)}")
 		
-		print(f"Container cleanup complete: {flowcase_containers} flowcase containers found, {orphaned_containers} orphaned containers removed, {restarted_containers} containers restarted")
+		print(f"Container cleanup complete: {hostlife_containers} hostlife containers found, {orphaned_containers} orphaned containers removed, {restarted_containers} containers restarted")
 							
 	except Exception as e:
 		print(f"Error in container cleanup: {str(e)}")
 
 def force_pull_required_images():
-	"""Force pull all required images for Flowcase (called during startup)"""
+	"""Force pull all required images for Hostlife (called during startup)"""
 	if not docker_client:
 		print("No Docker client available, skipping required image pull")
 		return
 		
 	try:
-		log("INFO", "Starting required image pull for Flowcase...")
+		log("INFO", "Starting required image pull for Hostlife...")
 		
-		# Define all required images for Flowcase
+		# Define all required images for Hostlife
 		required_images = [
 			# Guacamole image (always required)
 			{
-				"name": f"flowcaseweb/flowcase-guac:{__version__}",
+				"name": f"zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
@@ -135,7 +135,7 @@ def force_pull_required_images():
 				continue
 				
 			# Construct full image name
-			if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
 				registry = droplet.container_docker_registry.rstrip("/")
 				image = f"{registry}/{droplet.container_docker_image}"
 			else:
@@ -168,13 +168,13 @@ def force_pull_required_images():
 			except Exception as e:
 				log("ERROR", f"Error pulling required Docker image {image_name} ({description}): {e}")
 				
-		log("INFO", "Required image pull for Flowcase completed")
+		log("INFO", "Required image pull for Hostlife completed")
 				
 	except Exception as e:
 		log("ERROR", f"Error in force_pull_required_images: {str(e)}")
 
 def pull_images():
-	"""Pull all required docker images for Flowcase"""
+	"""Pull all required docker images for Hostlife"""
 	if not docker_client:
 		print("No Docker client available, skipping image pull")
 		return
@@ -182,11 +182,11 @@ def pull_images():
 	from models.droplet import Droplet
 	
 	try:
-		# Define all required images for Flowcase
+		# Define all required images for Hostlife
 		required_images = [
 			# Guacamole image (always required)
 			{
-				"name": f"flowcaseweb/flowcase-guac:{__version__}",
+				"name": f"zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
@@ -198,7 +198,7 @@ def pull_images():
 				continue
 				
 			# Construct full image name
-			if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
 				registry = droplet.container_docker_registry.rstrip("/")
 				image = f"{registry}/{droplet.container_docker_image}"
 			else:
@@ -231,7 +231,7 @@ def pull_images():
 			except Exception as e:
 				log("ERROR", f"Error pulling required Docker image {image_name} ({description}): {e}")
 				
-		log("INFO", "Required image pull for Flowcase completed")
+		log("INFO", "Required image pull for Hostlife completed")
 				
 	except Exception as e:
 		log("ERROR", f"Error in pull_images: {str(e)}")
@@ -243,7 +243,7 @@ def check_image_exists(registry, image_name):
 	
 	try:
 		# Construct full image name
-		if registry and "docker.io" not in registry:
+		if registry and "ghcr.io" not in registry:
 			registry = registry.rstrip("/")
 			full_image = f"{registry}/{image_name}"
 		else:
@@ -270,7 +270,7 @@ def pull_single_image(registry, image_name):
 			return False, "Image name cannot be empty"
 		
 		# Construct full image name
-		if registry and "docker.io" not in registry:
+		if registry and "ghcr.io" not in registry:
 			registry = registry.rstrip("/")
 			full_image = f"{registry}/{image_name}"
 		else:
@@ -309,7 +309,7 @@ def get_images_status():
 			{
 				"id": "guac",
 				"name": "Guacamole",
-				"image": f"flowcaseweb/flowcase-guac:{__version__}",
+				"image": f"zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
@@ -321,7 +321,7 @@ def get_images_status():
 				continue
 				
 			# Construct full image name
-			if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
 				registry = droplet.container_docker_registry.rstrip("/")
 				full_image = f"{registry}/{droplet.container_docker_image}"
 			else:
@@ -386,7 +386,7 @@ def list_available_networks():
 def get_network_for_droplet(droplet):
 	"""Get the appropriate network for a droplet, with fallback to default"""
 	if not docker_client:
-		return "flowcase_default_network"
+		return "hostlife_default_network"
 	
 	# If droplet has a specific network defined, use it
 	if droplet.container_network and droplet.container_network.strip():
@@ -399,4 +399,4 @@ def get_network_for_droplet(droplet):
 			log("WARNING", f"Network {network_name} specified for droplet {droplet.display_name} not found, falling back to default")
 	
 	# Default network
-	return "flowcase_default_network"
+	return "hostlife_default_network"

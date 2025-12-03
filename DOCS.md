@@ -1,13 +1,13 @@
-# Flowcase Documentation Index
+# Hostlife Documentation Index
 
-Welcome to Flowcase documentation! This guide helps you find the right documentation for your needs.
+Welcome to Hostlife documentation! This guide helps you find the right documentation for your needs.
 
 ## 📚 Documentation Files
 
 ### Getting Started
 
 - **[QUICKSTART.md](QUICKSTART.md)** - Get up and running in 5 minutes
-  - Fastest way to start using Flowcase
+  - Fastest way to start using Hostlife
   - Minimal setup required
   - Perfect for first-time users
 
@@ -27,7 +27,7 @@ Welcome to Flowcase documentation! This guide helps you find the right documenta
   - Security checklist
 
 - **[README.md](README.md)** - Project overview
-  - What is Flowcase?
+  - What is Hostlife?
   - Features
   - Quick start
   - Architecture overview
@@ -43,13 +43,13 @@ Welcome to Flowcase documentation! This guide helps you find the right documenta
 
 ### I want to...
 
-**Install Flowcase quickly:**
+**Install Hostlife quickly:**
 → [QUICKSTART.md](QUICKSTART.md)
 
-**Understand what Flowcase is:**
+**Understand what Hostlife is:**
 → [README.md](README.md)
 
-**Set up Flowcase with all options:**
+**Set up Hostlife with all options:**
 → [SETUP.md](SETUP.md)
 
 **Configure Authentik authentication:**
@@ -67,7 +67,7 @@ Welcome to Flowcase documentation! This guide helps you find the right documenta
 ## 📖 Documentation Structure
 
 ```
-Flowcase/
+Hostlife/
 ├── README.md          # Project overview and quick start
 ├── QUICKSTART.md      # 5-minute quick start guide
 ├── INSTALL.md         # Installation reference
@@ -102,7 +102,7 @@ Flowcase/
 
 ## 🔗 External Resources
 
-- **GitHub Repository**: [flowcase/flowcase](https://github.com/flowcase/flowcase)
+- **GitHub Repository**: [hostlife/hostlife](https://github.com/hostlife/hostlife)
 - **Docker Documentation**: [docker.com/docs](https://docs.docker.com)
 - **Authentik Documentation**: [goauthentik.io/docs](https://goauthentik.io/docs)
 

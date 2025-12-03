@@ -246,14 +246,14 @@ function AdminChangeTab(tab, element = null)
 				});
 			});
 
-			flowcase_version = json["flowcase_version"];
+			hostlife_version = json["hostlife_version"];
 
 			//set droplet registry name
 			droplets.forEach(droplet => {
 				droplet.registry_name = json["registry"].find(registry => registry.droplets.find(d => d.id == droplet.id)).info.name;
 
-				//if tag of the flowcase version is found, set the intial tag to that, otherwise set to the first tag
-				droplet.tagdefaultindex = droplet.container_docker_tags.findIndex(tag => tag == flowcase_version);
+				//if tag of the hostlife version is found, set the intial tag to that, otherwise set to the first tag
+				droplet.tagdefaultindex = droplet.container_docker_tags.findIndex(tag => tag == hostlife_version);
 				if (droplet.tagdefaultindex == -1) {
 					droplet.tagdefaultindex = 0;
 				}
@@ -366,8 +366,8 @@ function AdminChangeTab(tab, element = null)
 				<h3>Versions</h3>
 
 				<div class="admin-modal-card">
-					<p>Flowcase</p>
-					<textarea readonly disabled style="resize: none;">${json["version"]["flowcase"]}</textarea>
+					<p>Hostlife</p>
+					<textarea readonly disabled style="resize: none;">${json["version"]["hostlife"]}</textarea>
 				</div>
 
 				<div class="admin-modal-card">
@@ -1479,7 +1479,7 @@ function ShowEditDroplet(instance_id = null)
 		<div class="admin-modal-card">
 			<p>Docker Network</p>
 			<select id="admin-edit-droplet-network">
-				<option value="">Default Network (flowcase_default_network)</option>
+				<option value="">Default Network (hostlife_default_network)</option>
 				<!-- Network options will be populated dynamically -->
 			</select>
 			<small>Select a network for this droplet</small>

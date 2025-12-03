@@ -42,7 +42,7 @@ chmod +x install.sh
 
 ## What Gets Installed
 
-- Flowcase web application
+- Hostlife web application
 - Nginx reverse proxy
 - Traefik with automatic HTTPS
 - Authentik (optional authentication)

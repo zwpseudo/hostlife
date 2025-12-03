@@ -11,7 +11,7 @@ def parse_args():
 	return parser.parse_known_args()[0]
 
 def configure_app(app, config=None):
-	app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), 'data', 'flowcase.db')
+	app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), 'data', 'hostlife.db')
 	app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 	
 	os.makedirs("data", exist_ok=True)

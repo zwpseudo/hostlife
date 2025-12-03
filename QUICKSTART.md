@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get Flowcase up and running in 5 minutes!
+Get Hostlife up and running in 5 minutes!
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ Or view logs:
 docker compose logs -f
 ```
 
-### Step 4: Access Flowcase
+### Step 4: Access Hostlife
 
 1. Open browser: `http://localhost`
 2. Login with credentials from Step 3
@@ -57,7 +57,7 @@ docker compose logs -f
 
 ## That's It! 🎉
 
-You're now running Flowcase!
+You're now running Hostlife!
 
 ## Next Steps
 
@@ -72,10 +72,10 @@ You're now running Flowcase!
 # View logs
 docker compose logs -f
 
-# Stop Flowcase
+# Stop Hostlife
 docker compose down
 
-# Start Flowcase
+# Start Hostlife
 docker compose up -d
 
 # Restart

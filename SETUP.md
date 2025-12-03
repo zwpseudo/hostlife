@@ -1,6 +1,6 @@
-# Flowcase Setup Guide
+# Hostlife Setup Guide
 
-This guide provides detailed instructions for setting up Flowcase, including both basic and advanced configurations with Authentik authentication.
+This guide provides detailed instructions for setting up Hostlife, including both basic and advanced configurations with Authentik authentication.
 
 ## Table of Contents
 
@@ -8,7 +8,7 @@ This guide provides detailed instructions for setting up Flowcase, including bot
 - [Prerequisites](#prerequisites)
 - [Installation Methods](#installation-methods)
 - [Configuration](#configuration)
-- [Accessing Flowcase](#accessing-flowcase)
+- [Accessing Hostlife](#accessing-hostlife)
 - [Authentik Integration (Optional)](#authentik-integration-optional)
 - [Troubleshooting](#troubleshooting)
 
@@ -31,7 +31,7 @@ Or follow the [manual installation](#manual-installation) steps below.
 
 ## Prerequisites
 
-Before installing Flowcase, ensure you have:
+Before installing Hostlife, ensure you have:
 
 1. **Docker** (version 20.10 or later)
    - Download: https://www.docker.com/get-started
@@ -56,7 +56,7 @@ Before installing Flowcase, ensure you have:
 
 #### Windows
 
-1. Open PowerShell in the Flowcase directory
+1. Open PowerShell in the Hostlife directory
 2. Run the installation script:
    ```powershell
    .\install.ps1
@@ -77,19 +77,19 @@ Before installing Flowcase, ensure you have:
 
 ### Manual Installation
 
-#### Step 1: Clone or Download Flowcase
+#### Step 1: Clone or Download Hostlife
 
 If using git:
 ```bash
-git clone https://github.com/flowcase/flowcase.git
-cd flowcase
+git clone https://github.com/hostlife/hostlife.git
+cd hostlife
 ```
 
 Or download and extract the repository.
 
 #### Step 2: Create Environment File
 
-Create a `.env` file in the Flowcase directory:
+Create a `.env` file in the Hostlife directory:
 
 **For Local Development:**
 ```env
@@ -118,7 +118,7 @@ openssl rand -base64 24
 openssl rand -base64 32
 ```
 
-#### Step 3: Start Flowcase
+#### Step 3: Start Hostlife
 
 ```bash
 docker compose up -d
@@ -147,7 +147,7 @@ Password: <random-password>
 
 | Variable | Description | Example | Required |
 |----------|-------------|---------|----------|
-| `DOMAIN` | Your domain name | `localhost` or `flowcase.example.com` | Yes |
+| `DOMAIN` | Your domain name | `localhost` or `hostlife.example.com` | Yes |
 | `ADMIN_EMAIL` | Email for Let's Encrypt notifications | `admin@example.com` | Yes |
 | `CA_SERVER` | ACME certificate authority | Staging: `https://acme-staging-v02.api.letsencrypt.org/directory`<br>Production: `https://acme-v02.api.letsencrypt.org/directory` | Yes |
 | `PG_PASS` | PostgreSQL database password | Secure random string | Yes |
@@ -160,8 +160,8 @@ Password: <random-password>
 ### Docker Compose Configuration
 
 The main `docker-compose.yml` includes:
-- **Flowcase Web**: Main application server
-- **Nginx**: Reverse proxy for Flowcase
+- **Hostlife Web**: Main application server
+- **Nginx**: Reverse proxy for Hostlife
 - **Traefik**: Reverse proxy and load balancer
 - **Authentik**: Identity provider (optional authentication)
 
@@ -177,7 +177,7 @@ The main `docker-compose.yml` includes:
 2. Edit `docker-compose.yml`:
    - Uncomment the middleware line (line 41):
      ```yaml
-     - traefik.http.routers.flowcase.middlewares=authentik@file
+     - traefik.http.routers.hostlife.middlewares=authentik@file
      ```
    - Add the `--traefik-authentik` flag to the web service command (line 24):
      ```yaml
@@ -192,7 +192,7 @@ The main `docker-compose.yml` includes:
 > 
 > When disabling Authentik, disable BOTH to avoid authentication mismatches.
 
-## Accessing Flowcase
+## Accessing Hostlife
 
 ### Without Authentik (Default)
 
@@ -215,10 +215,10 @@ The main `docker-compose.yml` includes:
    - Default username: `akadmin`
    - Password: Check terminal logs or reset via command
 
-2. **Access Flowcase:**
+2. **Access Hostlife:**
    - URL: `https://localhost` (or your domain)
    - You'll be redirected to Authentik for authentication
-   - After login, you'll access Flowcase
+   - After login, you'll access Hostlife
 
 ## Authentik Integration (Optional)
 
@@ -236,10 +236,10 @@ Authentik provides enterprise-grade authentication and authorization. Follow the
 1. Go to **Applications → Providers**
 2. Click **Create** → **Proxy Provider**
 3. Configure:
-   - **Name**: `Flowcase Proxy`
+   - **Name**: `Hostlife Proxy`
    - **Authorization flow**: Select default authorization flow
    - **External host**: `https://localhost` (or your domain)
-   - **Internal host**: `http://flowcase-nginx:80`
+   - **Internal host**: `http://hostlife-nginx:80`
    - **Forward auth (single application)**: ✅ Enabled
    - **Forward auth (domain)**: Leave empty
    - **Cookie domain**: Leave empty
@@ -250,9 +250,9 @@ Authentik provides enterprise-grade authentication and authorization. Follow the
 1. Go to **Applications → Applications**
 2. Click **Create**
 3. Configure:
-   - **Name**: `Flowcase`
-   - **Slug**: `flowcase` (auto-generated)
-   - **Provider**: Select `Flowcase Proxy`
+   - **Name**: `Hostlife`
+   - **Slug**: `hostlife` (auto-generated)
+   - **Provider**: Select `Hostlife Proxy`
    - **Launch URL**: `https://localhost` (or your domain)
 4. Click **Create**
 
@@ -264,7 +264,7 @@ Authentik provides enterprise-grade authentication and authorization. Follow the
    - **Name**: `Default Outpost`
    - **Integration**: `Docker`
    - **Type**: `Proxy`
-   - **Applications**: Select `Flowcase`
+   - **Applications**: Select `Hostlife`
    - **Configuration**: Ensure it's enabled
 4. Click **Update**
 
@@ -273,7 +273,7 @@ Authentik provides enterprise-grade authentication and authorization. Follow the
 1. Edit `docker-compose.yml`
 2. Uncomment the middleware line (around line 41):
    ```yaml
-   - traefik.http.routers.flowcase.middlewares=authentik@file
+   - traefik.http.routers.hostlife.middlewares=authentik@file
    ```
 3. Add the `--traefik-authentik` flag to the web service command (around line 24):
    ```yaml
@@ -291,14 +291,14 @@ Authentik provides enterprise-grade authentication and authorization. Follow the
 
 1. Go to **Directory → Users**
 2. Click **Create**
-3. Add users that match Flowcase usernames
+3. Add users that match Hostlife usernames
 4. Assign users to groups as needed
 
 ### Step 7: Test Authentication
 
 1. Navigate to `https://localhost` (or your domain)
 2. You should be redirected to Authentik login
-3. After successful login, you'll access Flowcase
+3. After successful login, you'll access Hostlife
 
 ## Troubleshooting
 
@@ -379,7 +379,7 @@ docker compose restart web
 docker compose restart nginx
 ```
 
-### Stop Flowcase
+### Stop Hostlife
 
 ```bash
 docker compose down
@@ -410,7 +410,7 @@ docker compose down -v
 ### Recommended Production Settings
 
 ```env
-DOMAIN=flowcase.yourdomain.com
+DOMAIN=hostlife.yourdomain.com
 ADMIN_EMAIL=admin@yourdomain.com
 CA_SERVER=https://acme-v02.api.letsencrypt.org/directory
 PG_PASS=<strong-random-password-32-chars>
@@ -444,5 +444,5 @@ After setup:
 4. Set up Authentik (optional but recommended)
 5. Customize settings as needed
 
-Enjoy using Flowcase! 🎉
+Enjoy using Hostlife! 🎉
 

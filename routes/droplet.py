@@ -122,12 +122,12 @@ def get_instances():
 		# Try to get container IP if it exists
 		ip = "N/A"
 		try:
-			container = utils.docker.docker_client.containers.get(f"flowcase_generated_{instance.id}")
+			container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
 			networks = container.attrs['NetworkSettings']['Networks']
 			
 			# For nginx connectivity, prioritize the default network
-			if 'flowcase_default_network' in networks and networks['flowcase_default_network']['IPAddress']:
-				ip = networks['flowcase_default_network']['IPAddress']
+			if 'hostlife_default_network' in networks and networks['hostlife_default_network']['IPAddress']:
+				ip = networks['hostlife_default_network']['IPAddress']
 			
 			# If no IP found on default network, check the droplet's specified network
 			elif droplet.container_network and droplet.container_network in networks:
@@ -222,12 +222,12 @@ def request_new_instance():
 	# Check if docker image is downloaded
 	images = utils.docker.docker_client.images.list()
 	image_name = droplet.container_docker_image
-	if droplet.container_docker_registry and "docker.io" not in droplet.container_docker_registry:
+	if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
 		image_name = droplet.container_docker_registry + "/" + image_name
 
 	image_exists = False
 	for image in images:
-		if isGuacDroplet and f"flowcaseweb/flowcase-guac:{__version__}" in image.tags:
+		if isGuacDroplet and f"zwpseudo/hostlife-guac:{__version__}" in image.tags:
 			image_exists = True
 			break
 
@@ -271,7 +271,7 @@ def request_new_instance():
 	# Create a docker container
 	log("INFO", f"Creating new instance for user {current_user.username} with droplet {droplet.display_name}")
  
-	name = f"flowcase_generated_{instance.id}"
+	name = f"hostlife_generated_{instance.id}"
  
 	request_resolution = request.json.get('resolution')
 	if len(request_resolution) < 10 and re.match(r"[0-9]+x[0-9]+", request_resolution):
@@ -294,10 +294,10 @@ def request_new_instance():
 		
 		# Create a safe volume name (Docker volume names have restrictions)
 		volume_name = re.sub(r'[^a-zA-Z0-9._-]', '_', volume_name)
-		volume_name = f"flowcase_profile_{volume_name}"
+		volume_name = f"hostlife_profile_{volume_name}"
 		
 		# Mount to user's home directory in container
-		container_path = "/home/flowcase-user"
+		container_path = "/home/hostlife-user"
 		
 		try:
 			# Check if volume exists, create if not
@@ -342,7 +342,7 @@ def request_new_instance():
 			)
 		else: # Guacamole droplet
 			container = utils.docker.docker_client.containers.run(
-				image=f"flowcaseweb/flowcase-guac:{__version__}",
+				image=f"zwpseudo/hostlife-guac:{__version__}",
 				name=name,
 				environment={"GUAC_KEY": current_user.auth_token[:32]},
 				detach=True,
@@ -350,11 +350,11 @@ def request_new_instance():
 			)
 		
 		# If using a non-default network, also connect to the default network for nginx connectivity
-		if network != "flowcase_default_network":
+		if network != "hostlife_default_network":
 			try:
-				default_network = utils.docker.docker_client.networks.get("flowcase_default_network")
+				default_network = utils.docker.docker_client.networks.get("hostlife_default_network")
 				default_network.connect(container.id)
-				log("INFO", f"Connected container {name} to flowcase_default_network for nginx connectivity")
+				log("INFO", f"Connected container {name} to hostlife_default_network for nginx connectivity")
 			except Exception as e:
 				log("WARNING", f"Could not connect container to default network: {str(e)}")
  
@@ -408,15 +408,15 @@ def request_new_instance():
  
 		# Create nginx config - get fresh container info and handle network name variations
 		try:
-			container = utils.docker.docker_client.containers.get(f"flowcase_generated_{instance.id}")
+			container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
 			networks = container.attrs['NetworkSettings']['Networks']
 			
 			# For nginx connectivity, prioritize the default network
 			ip = None
 			
 			# First check the default network for nginx connectivity
-			if 'flowcase_default_network' in networks and networks['flowcase_default_network']['IPAddress']:
-				ip = networks['flowcase_default_network']['IPAddress']
+			if 'hostlife_default_network' in networks and networks['hostlife_default_network']['IPAddress']:
+				ip = networks['hostlife_default_network']['IPAddress']
 				log("INFO", f"Found container IP {ip} on default network (for nginx connectivity)")
 			
 			# If no IP found on default network, check the droplet's specified network
@@ -516,8 +516,8 @@ def check_resources(droplet: Droplet) -> Tuple[bool, str]:
 	return True, ""
 
 def generate_nginx_config(instance: DropletInstance, droplet: Droplet, ip: str, user: User) -> str:
-	authHeader = base64.b64encode(b'flowcase_user:' + user.auth_token.encode()).decode('utf-8')
-	container_name = f"flowcase_generated_{instance.id}"
+	authHeader = base64.b64encode(b'hostlife_user:' + user.auth_token.encode()).decode('utf-8')
+	container_name = f"hostlife_generated_{instance.id}"
 	 
 	if droplet.droplet_type == "container":
 		nginx_config = open(f"config/nginx/container_template.conf", "r").read()
@@ -534,11 +534,11 @@ def generate_nginx_config(instance: DropletInstance, droplet: Droplet, ip: str, 
 	return nginx_config
 
 def write_nginx_config(instance: DropletInstance, nginx_config: str):
-	with open(f"/flowcase/nginx/containers.d/{instance.id}.conf", "w") as f:
+	with open(f"/hostlife/nginx/containers.d/{instance.id}.conf", "w") as f:
 		f.write(nginx_config)
 
 def reload_nginx():
-	nginx_container = utils.docker.docker_client.containers.get("flowcase-nginx")
+	nginx_container = utils.docker.docker_client.containers.get("hostlife-nginx")
 	result = nginx_container.exec_run("nginx -s reload")
 	if result.exit_code != 0:
 		log("WARNING", f"Failed to reload Nginx: {result.output.decode()}")
@@ -671,15 +671,15 @@ def stop_instance(instance_id: str):
 
 	try:
 		if utils.docker.docker_client:
-			container = utils.docker.docker_client.containers.get(f"flowcase_generated_{instance.id}")
+			container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
 			container.remove(force=True)
 	except Exception as e:
 		log("ERROR", f"Error removing container: {str(e)}")
 		pass
   
 	# Delete nginx config
-	if os.path.exists(f"/flowcase/nginx/containers.d/{instance.id}.conf"):
-		os.remove(f"/flowcase/nginx/containers.d/{instance.id}.conf")
+	if os.path.exists(f"/hostlife/nginx/containers.d/{instance.id}.conf"):
+		os.remove(f"/hostlife/nginx/containers.d/{instance.id}.conf")
 	
 	db.session.delete(instance)
 	db.session.commit()

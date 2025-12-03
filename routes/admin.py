@@ -20,8 +20,8 @@ def get_container_ip(container, droplet):
 	networks = container.attrs['NetworkSettings']['Networks']
 	
 	# First check the default network for nginx connectivity
-	if 'flowcase_default_network' in networks and networks['flowcase_default_network']['IPAddress']:
-		return networks['flowcase_default_network']['IPAddress']
+	if 'hostlife_default_network' in networks and networks['hostlife_default_network']['IPAddress']:
+		return networks['hostlife_default_network']['IPAddress']
 	
 	# If not found, check the droplet's specified network
 	if droplet.container_network and droplet.container_network in networks:
@@ -44,7 +44,7 @@ def api_admin_system():
 	nginx_version = None
 	try:
 		#get docker container
-		nginx_container = utils.docker.docker_client.containers.get("flowcase-nginx")
+		nginx_container = utils.docker.docker_client.containers.get("hostlife-nginx")
 		result = nginx_container.exec_run("nginx -v")
 		nginx_version = result.output.decode('utf-8').split("\n")[0].replace("nginx version: nginx/", "")
 	except:
@@ -57,7 +57,7 @@ def api_admin_system():
 			"os": f"{platform.system()} {platform.release()}"
 		},
 		"version": {
-			"flowcase": __version__,
+			"hostlife": __version__,
 			"python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
 			"docker": utils.docker.get_docker_version(),
 			"nginx": nginx_version,
@@ -123,7 +123,7 @@ def api_admin_instances():
 		try:
 			droplet = Droplet.query.filter_by(id=instance.droplet_id).first()
 			user = User.query.filter_by(id=instance.user_id).first()
-			container = utils.docker.docker_client.containers.get(f"flowcase_generated_{instance.id}")
+			container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
 			response["instances"].append({
 				"id": instance.id,
 				"created_at": instance.created_at,
@@ -312,7 +312,7 @@ def api_admin_delete_droplet():
 	if utils.docker.is_docker_available():
 		for instance in instances:
 			try:
-				container = utils.docker.docker_client.containers.get(f"flowcase_generated_{instance.id}")
+				container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
 				container.remove(force=True)
 			except Exception as e:
 				pass  # Container might not exist
@@ -339,7 +339,7 @@ def api_admin_delete_instance():
  
 	if utils.docker.is_docker_available():
 		try:
-			container = utils.docker.docker_client.containers.get(f"flowcase_generated_{instance.id}")
+			container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
 			container.remove(force=True)
 		except Exception as e:
 			pass  # Container might not exist
@@ -439,7 +439,7 @@ def api_admin_delete_user():
 	if utils.docker.is_docker_available():
 		for instance in instances:
 			try:
-				container = utils.docker.docker_client.containers.get(f"flowcase_generated_{instance.id}")
+				container = utils.docker.docker_client.containers.get(f"hostlife_generated_{instance.id}")
 				container.remove(force=True)
 			except Exception as e:
 				pass  # Container might not exist
@@ -591,11 +591,11 @@ def api_admin_registry():
 		return jsonify({"success": False, "error": "Unauthorized"}), 403
 
 	import os
-	registry_lock = os.environ.get('FLOWCASE_REGISTRY_LOCK')
+	registry_lock = os.environ.get('HOSTLIFE_REGISTRY_LOCK')
 
 	response = {
 		"success": True,
-		"flowcase_version": __version__,
+		"hostlife_version": __version__,
 		"registry": [],
 		"registry_locked": bool(registry_lock)
 	}
@@ -649,7 +649,7 @@ def api_admin_registry():
 @login_required
 def api_admin_edit_registry():
 	import os
-	registry_lock = os.environ.get('FLOWCASE_REGISTRY_LOCK')
+	registry_lock = os.environ.get('HOSTLIFE_REGISTRY_LOCK')
 	
 	# Block all registry editing when locked
 	if registry_lock:
@@ -782,8 +782,8 @@ def api_admin_pull_image():
 	# Handle special guac droplet
 	if droplet_id == "guac":
 		from __init__ import __version__
-		registry = "https://index.docker.io/v1/"
-		image_name = f"flowcaseweb/flowcase-guac:{__version__}"
+		registry = "https://index.https://ghcr.io/zwpseudo/v1/"
+		image_name = f"zwpseudo/hostlife-guac:{__version__}"
 	else:
 		# Get droplet info
 		droplet = Droplet.query.filter_by(id=droplet_id).first()
@@ -908,7 +908,7 @@ def api_admin_networks():
 		filtered_networks = []
 		for network in all_networks:
 			network_name = network["name"]
-			if (network_name == "flowcase_default_network" or
+			if (network_name == "hostlife_default_network" or
 				network_name.startswith("lan_") or
 				network_name.startswith("vlan_")):
 				filtered_networks.append(network)

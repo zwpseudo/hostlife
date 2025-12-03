@@ -58,7 +58,7 @@ def check_external_identity():
 	auth_method = "unknown"
 	
 	# Check if Traefik + Authentik header-based authentication is enabled
-	if os.environ.get('FLOWCASE_TRAEFIK_AUTHENTIK') == '1':
+	if os.environ.get('HOSTLIFE_TRAEFIK_AUTHENTIK') == '1':
 		# Priority: Header-based authentication via Traefik + Authentik
 		authentik_username = request.headers.get('X-Authentik-Username')
 		if authentik_username and authentik_username.strip():
@@ -66,15 +66,15 @@ def check_external_identity():
 			auth_method = "Traefik + Authentik header"
 			log("INFO", f"Using Traefik + Authentik header authentication for user: {ext_identity}")
 		else:
-			log("WARNING", "FLOWCASE_TRAEFIK_AUTHENTIK is enabled but X-Authentik-Username header is missing or empty")
+			log("WARNING", "HOSTLIFE_TRAEFIK_AUTHENTIK is enabled but X-Authentik-Username header is missing or empty")
 			# Fall back to environment variable method
-			ext_identity = os.environ.get('FLOWCASE_EXT_USER')
+			ext_identity = os.environ.get('HOSTLIFE_EXT_USER')
 			if ext_identity:
 				auth_method = "environment variable (fallback)"
 				log("INFO", f"Falling back to environment variable authentication for user: {ext_identity}")
 	else:
 		# Default: Environment variable method
-		ext_identity = os.environ.get('FLOWCASE_EXT_USER')
+		ext_identity = os.environ.get('HOSTLIFE_EXT_USER')
 		if ext_identity:
 			auth_method = "environment variable"
 			log("INFO", f"Using environment variable authentication for user: {ext_identity}")
@@ -141,7 +141,7 @@ def logout():
 	logout_user()
 	
 	# Check if Traefik + Authentik is enabled
-	if os.environ.get('FLOWCASE_TRAEFIK_AUTHENTIK') == '1':
+	if os.environ.get('HOSTLIFE_TRAEFIK_AUTHENTIK') == '1':
 		# Redirect to Authentik logout URL
 		hostname = request.host.split(':')[0]
 		authentik_logout_url = f"https://authentik.{hostname}/flows/-/default/invalidation/"
@@ -175,7 +175,7 @@ def droplet_connect():
 			log("WARNING", f"Cookie authentication failed for droplet connection - invalid user or token")
 	
 	# Fallback to header-based authentication if cookie authentication fails
-	if os.environ.get('FLOWCASE_TRAEFIK_AUTHENTIK') == '1':
+	if os.environ.get('HOSTLIFE_TRAEFIK_AUTHENTIK') == '1':
 		authentik_username = request.headers.get('X-Authentik-Username')
 		if authentik_username and authentik_username.strip():
 			username = authentik_username.strip()

@@ -57,18 +57,18 @@ if __name__ == '__main__':
 	
 	# Handle Traefik + Authentik mode
 	if args.traefik_authentik:
-		env['FLOWCASE_TRAEFIK_AUTHENTIK'] = '1'
+		env['HOSTLIFE_TRAEFIK_AUTHENTIK'] = '1'
 		print("Traefik + Authentik integration enabled")
 		print("Application will read username from X-Authentik-Username header")
 	# Handle external IDP simulation mode (only if Traefik + Authentik is not enabled)
 	elif args.ext_idp_user:
-		env['FLOWCASE_EXT_USER'] = args.ext_idp_user
+		env['HOSTLIFE_EXT_USER'] = args.ext_idp_user
 		print("External identity provider simulation enabled")
 		print(f"Setting external user: {args.ext_idp_user}")
 	
 	# Handle registry lock configuration
 	if args.registry_lock:
-		env['FLOWCASE_REGISTRY_LOCK'] = args.registry_lock
+		env['HOSTLIFE_REGISTRY_LOCK'] = args.registry_lock
 		print(f"Registry lock enabled for: {args.registry_lock}")
 	
 	# Add any unknown arguments to gunicorn command

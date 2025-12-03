@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Any security vulnerabilities should be security@flowcase.org.
+Any security vulnerabilities should be security@hostlife.org.
 Please provide:
 - A detailed description of the vulnerability.
 - Steps to reproduce

@@ -20,7 +20,7 @@ accesslog = "-"
 errorlog = "-"
 loglevel = "info"
 
-proc_name = "flowcase"
+proc_name = "hostlife"
 
 preload_app = True
 

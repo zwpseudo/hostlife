@@ -9,12 +9,12 @@ services:
     build:
       context: .
       dockerfile: web.Dockerfile
-    image: flowcaseweb/flowcase
-    container_name: flowcase-web
+    image: zwpseudo/hostlife
+    container_name: hostlife-web
     restart: unless-stopped
     volumes:
-      - flowcase-data:/flowcase/data
-      - flowcase-nginx-data:/flowcase/nginx
+      - hostlife-data:/hostlife/data
+      - hostlife-nginx-data:/hostlife/nginx
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - FLASK_APP=run.py
@@ -25,20 +25,20 @@ services:
 
   nginx:
     image: nginx:1.28-alpine
-    container_name: flowcase-nginx
+    container_name: hostlife-nginx
     restart: unless-stopped
     volumes:
-      - flowcase-nginx-data:/etc/nginx/conf.d
+      - hostlife-nginx-data:/etc/nginx/conf.d
     depends_on:
       - web
     labels:
       - traefik.enable=true
-      - traefik.http.routers.flowcase.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.flowcase.entrypoints=websecure
-      - traefik.http.routers.flowcase.tls.certresolver=acme-resolver
-      - traefik.http.services.flowcase.loadbalancer.server.port=80
+      - traefik.http.routers.hostlife.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.hostlife.entrypoints=websecure
+      - traefik.http.routers.hostlife.tls.certresolver=acme-resolver
+      - traefik.http.services.hostlife.loadbalancer.server.port=80
       # enable middleware to add authentication by authentik
-      # - traefik.http.routers.flowcase.middlewares=authentik@file
+      # - traefik.http.routers.hostlife.middlewares=authentik@file
       - traefik.docker.network=proxy_network
     networks:
       - default_network
@@ -49,7 +49,7 @@ networks:
     driver: bridge
 
 volumes:
-  flowcase-data:
+  hostlife-data:
     external: false
-  flowcase-nginx-data:
+  hostlife-nginx-data:
     external: false

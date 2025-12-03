@@ -1,8 +1,8 @@
-# <div align="center">🌊 **Flowcase**</div>
+# <div align="center">🌊 **Hostlife**</div>
 
 <div align="center">
 
-![Flowcase](https://img.shields.io/badge/Status-Development-yellow)
+![Hostlife](https://img.shields.io/badge/Status-Development-yellow)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Docker](https://img.shields.io/badge/Docker-Required-blue)
 
@@ -13,9 +13,9 @@
 > [!CAUTION]
 > This project is still in development and is not yet ready for production use. We do not currently support upgrading from older versions. Please use with caution.
 
-## What is Flowcase?
+## What is Hostlife?
 
-**Flowcase** is a free and completely open-source alternative to Kasm Workspaces, enabling secure container streaming for your applications. Stream desktop applications, development environments, and more through your web browser using Docker containers.
+**Hostlife** is a free and completely open-source alternative to Kasm Workspaces, enabling secure container streaming for your applications. Stream desktop applications, development environments, and more through your web browser using Docker containers.
 
 ## Features
 
@@ -53,8 +53,8 @@ The installation script will:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/flowcase/flowcase.git
-   cd flowcase
+   git clone https://github.com/hostlife/hostlife.git
+   cd hostlife
    ```
 
 2. **Create `.env` file:**
@@ -63,7 +63,7 @@ The installation script will:
    # Edit .env with your configuration
    ```
 
-3. **Start Flowcase:**
+3. **Start Hostlife:**
    ```bash
    docker compose up -d
    ```
@@ -73,13 +73,13 @@ The installation script will:
    docker compose logs -f
    ```
 
-5. **Access Flowcase:**
+5. **Access Hostlife:**
    - Open `http://localhost` or `https://localhost`
    - Use the default admin credentials shown in the logs
 
 ## Prerequisites
 
-Before installing Flowcase, ensure you have:
+Before installing Hostlife, ensure you have:
 
 - **Docker** (version 20.10 or later)
   - [Download Docker Desktop](https://www.docker.com/get-started)
@@ -116,7 +116,7 @@ Create a `.env` file with the following variables:
 
 | Variable | Description | Example | Required |
 |----------|-------------|---------|----------|
-| `DOMAIN` | Your domain name | `localhost` or `flowcase.example.com` | Yes |
+| `DOMAIN` | Your domain name | `localhost` or `hostlife.example.com` | Yes |
 | `ADMIN_EMAIL` | Email for Let's Encrypt notifications | `admin@example.com` | Yes |
 | `CA_SERVER` | ACME certificate authority | Staging: `https://acme-staging-v02.api.letsencrypt.org/directory`<br>Production: `https://acme-v02.api.letsencrypt.org/directory` | Yes |
 | `PG_PASS` | PostgreSQL database password | Secure random string | Yes |
@@ -148,14 +148,14 @@ AUTHENTIK_SECRET_KEY=<generate-secure-key>
 For production deployment:
 
 ```env
-DOMAIN=flowcase.yourdomain.com
+DOMAIN=hostlife.yourdomain.com
 ADMIN_EMAIL=admin@yourdomain.com
 CA_SERVER=https://acme-v02.api.letsencrypt.org/directory
 PG_PASS=<strong-random-password-32-chars>
 AUTHENTIK_SECRET_KEY=<strong-random-key-50-chars>
 ```
 
-## Accessing Flowcase
+## Accessing Hostlife
 
 ### Default Access (Without Authentik)
 
@@ -175,11 +175,11 @@ Authentik integration is **disabled by default**. To enable it:
    - Configure the Outpost
 
 2. **Enable Authentik in docker-compose.yml**:
-   - Uncomment the middleware line (line 41): `- traefik.http.routers.flowcase.middlewares=authentik@file`
+   - Uncomment the middleware line (line 41): `- traefik.http.routers.hostlife.middlewares=authentik@file`
    - Uncomment the flag (line 24): `--traefik-authentik`
    - Restart: `docker compose restart web nginx traefik`
 
-3. **Access Flowcase**: `https://localhost` (will redirect to Authentik for login)
+3. **Access Hostlife**: `https://localhost` (will redirect to Authentik for login)
 
 > [!NOTE]
 > Authentik is disabled by default for easier initial setup. Follow the complete setup guide in [SETUP.md](SETUP.md#authentik-integration-optional) to enable it.
@@ -187,7 +187,7 @@ Authentik integration is **disabled by default**. To enable it:
 ## Common Commands
 
 ```bash
-# Start Flowcase
+# Start Hostlife
 docker compose up -d
 
 # View logs
@@ -196,7 +196,7 @@ docker compose logs -f
 # View logs for specific service
 docker compose logs -f web
 
-# Stop Flowcase
+# Stop Hostlife
 docker compose down
 
 # Restart services
@@ -208,10 +208,10 @@ docker compose ps
 
 ## Architecture
 
-Flowcase consists of the following components:
+Hostlife consists of the following components:
 
-- **Flowcase Web**: Main application server (Flask)
-- **Nginx**: Reverse proxy for Flowcase
+- **Hostlife Web**: Main application server (Flask)
+- **Nginx**: Reverse proxy for Hostlife
 - **Traefik**: Reverse proxy and load balancer with automatic HTTPS
 - **Authentik**: Identity provider (optional, for authentication)
 - **PostgreSQL**: Database for Authentik
@@ -278,8 +278,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 - **Documentation**: Check [SETUP.md](SETUP.md) for detailed guides
-- **Issues**: Open an issue on [GitHub](https://github.com/flowcase/flowcase/issues)
-- **Discussions**: Join discussions on [GitHub Discussions](https://github.com/flowcase/flowcase/discussions)
+- **Issues**: Open an issue on [GitHub](https://github.com/hostlife/hostlife/issues)
+- **Discussions**: Join discussions on [GitHub Discussions](https://github.com/hostlife/hostlife/discussions)
 
 ## Roadmap
 
@@ -293,5 +293,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-Made with ❤️ by the Flowcase Team
+Made with ❤️ by the Hostlife Team
 </div>
