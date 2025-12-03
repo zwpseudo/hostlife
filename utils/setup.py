@@ -55,7 +55,7 @@ def create_default_users():
 		user_groups = f"{user_group.id}"
 		
 		admin_random_password = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(16))
-		create_user("admin", admin_random_password, admin_groups)
+		create_user("admin", admin_random_password, admin_groups, protected=True)
 		
 		user_random_password = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(16))
 		create_user("user", user_random_password, user_groups)
@@ -74,14 +74,14 @@ def create_default_users():
 def create_default_registry():
 	"""Create default registry if none exists"""
 	if Registry.query.count() == 0:
-		hostlife_registry = Registry(url="https://zwpseudo.github.io/official-registry/")
-		db.session.add(hostlife_registry)
+		flowcase_registry = Registry(url="https://registry.flowcase.org")
+		db.session.add(flowcase_registry)
 		db.session.commit()
 
 def initialize_app(app):
 	"""Initialize the application for first run"""
 	with app.app_context():
-		log("INFO", "Initializing hostlife...")
+		log("INFO", "Initializing Flowcase...")
 		
 		os.makedirs("data", exist_ok=True)
 		
@@ -95,4 +95,4 @@ def initialize_app(app):
 			create_default_users()
 			create_default_registry()
 		
-		log("INFO", "hostlife initialized.") 
+		log("INFO", "Flowcase initialized.") 

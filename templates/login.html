@@ -4,7 +4,7 @@
             <link rel="icon" href="/favicon.ico">
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>hostlife - Login</title>
+        <title>Flowcase - Login</title>
 
         <link rel="stylesheet" type="text/css" href="/static/css/base.css">
         <link rel="stylesheet" type="text/css" href="/static/css/login.css">
@@ -13,16 +13,10 @@
     </head>
     
     <body>
-        <div class="login-shell">
-            <div class="login-brand">
-                <a href="/">
-                    <img src="/static/img/logoPLight.svg" alt="Portal home" class="login-logo">
-                </a>
-            </div>
-            <div class="form-container">
-                <div class="inner-content">
-                    <h2>Login</h2>
-                    <form class="form" action="/login" method="POST">
+        <div class="form-container">
+            <div class="inner-content">
+                <h2>Login</h2>
+                <form class="form" action="/login" method="POST">
                     <div class="input-group">
                         <label for="username">Username</label>
                         <input type="text" name="username" id="username" placeholder="">
@@ -38,13 +32,12 @@
                         <label for="remember">Remember me</label>
                     </div>
                     <button class="button-1-full">Sign in</button>
-                        {% if error %}
-                            <div class="error-message">
-                                {{ error }}
-                            </div>
-                        {% endif %}
-                    </form>
-                </div>
+                    {% if error %}
+                        <div class="error-message">
+                            {{ error }}
+                        </div>
+                    {% endif %}
+                </form>
             </div>
         </div>
     </body>

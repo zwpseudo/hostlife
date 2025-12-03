@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" href="/favicon.ico">
-        <title>hostlife - Dashboard</title>
+        <title>Flowcase - Dashboard</title>
 
         <link rel="stylesheet" href="/static/css/base.css">
         <link rel="stylesheet" href="/static/css/dashboard.css">
@@ -41,9 +41,7 @@
     <body>
         <div class="container">
             <nav class="nav">
-                <a class="nav-brand" href="/">
-                    <img src="/static/img/logoPLight.svg" alt="Dashboard home" class="nav-logo">
-                </a>
+                <h1>Flowcase</h1>
                 
                 <div class="nav-links">
                     {% if current_user.has_permission("perm_admin_panel") %}
