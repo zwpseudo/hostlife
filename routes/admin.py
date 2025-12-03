@@ -782,8 +782,8 @@ def api_admin_pull_image():
 	# Handle special guac droplet
 	if droplet_id == "guac":
 		from __init__ import __version__
-		registry = "https://index.https://ghcr.io/zwpseudo/v1/"
-		image_name = f"zwpseudo/hostlife-guac:{__version__}"
+		registry = "https://ghcr.io/"
+		image_name = f"zwpseudo/hostlife-guac:latest"
 	else:
 		# Get droplet info
 		droplet = Droplet.query.filter_by(id=droplet_id).first()
