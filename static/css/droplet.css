@@ -65,15 +65,11 @@
 	cursor: pointer;
 }
 
-.sidebar .sidebar-main .sidebar-header {
-	display: flex;
-	align-items: center;
-	margin: 0;
-}
+.sidebar .sidebar-main .sidebar-header h1 {
+	margin: 0px;
+	font-size: 20px;
 
-.sidebar .sidebar-main .sidebar-header .sidebar-logo {
-	height: 28px;
-	width: auto;
+	user-select: none;
 }
 
 .sidebar .sidebar-main .sidebar-content {

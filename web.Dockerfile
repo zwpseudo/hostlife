@@ -1,7 +1,16 @@
 FROM python:3.11-slim
 
 WORKDIR /hostlife
-ADD . /hostlife
+
+COPY config /hostlife/config
+COPY models /hostlife/models
+COPY nginx /hostlife/nginx
+COPY routes /hostlife/routes
+COPY static /hostlife/static
+COPY templates /hostlife/templates
+COPY utils /hostlife/utils
+COPY __init__.py run.py gunicorn.conf.py /hostlife/
+COPY requirements.txt /hostlife
 
 # Install system dependencies including Docker CLI
 RUN apt-get update && \

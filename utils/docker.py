@@ -5,39 +5,6 @@ from __init__ import __version__
 
 docker_client = None
 
-
-def _strip_scheme(value):
-	"""Remove URL schemes like https:// from registry/image strings."""
-	if not value:
-		return ""
-	value = value.strip()
-	return re.sub(r'^[a-zA-Z]+://', '', value)
-
-
-def sanitize_registry(registry):
-	"""Normalize registry strings (strip schemes/trailing slashes)."""
-	registry = _strip_scheme(registry)
-	return registry.rstrip('/')
-
-
-def sanitize_image_reference(image_name):
-	"""Normalize image references by stripping schemes and duplicate slashes."""
-	image_name = _strip_scheme(image_name)
-	if not image_name:
-		return ""
-	return re.sub(r'/+', '/', image_name)
-
-
-def build_full_image_name(registry, image_name):
-	"""Combine registry and image name safely, avoiding schemes and duplicates."""
-	image_name = sanitize_image_reference(image_name)
-	registry = sanitize_registry(registry)
-	if registry:
-		if image_name.startswith(f"{registry}/"):
-			return image_name
-		return f"{registry}/{image_name}" if image_name else registry
-	return image_name
-
 def init_docker():
 	global docker_client
 	
@@ -69,40 +36,93 @@ def get_docker_version():
 	except Exception as e:
 		return f"Error: {str(e)}"
 
-def cleanup_containers():
-	"""Delete any existing hostlife containers"""
+def cleanup_containers(app=None):
+	"""Clean up orphaned containers and restart existing ones"""
 	if not docker_client:
 		print("No Docker client available, skipping container cleanup")
 		return
 		
 	try:
+		# Import here to avoid circular imports
+		from models.droplet import DropletInstance
+		
+		print("Starting container cleanup and persistence check")
+		
+		# Get all instance IDs from the database - handle application context
+		instance_ids = []
+		if app:
+			with app.app_context():
+				instances = DropletInstance.query.all()
+				instance_ids = [instance.id for instance in instances]
+				print(f"Found {len(instance_ids)} active droplet instances in database")
+		else:
+			# When called without app context, just clean up orphaned containers
+			# based on naming pattern without checking database
+			print("No application context provided, skipping instance persistence check")
+		
+		# Get all containers
 		containers = docker_client.containers.list(all=True)
+		hostlife_containers = 0
+		orphaned_containers = 0
+		restarted_containers = 0
+		
 		for container in containers:
 			regex = re.compile(r"hostlife_generated_([a-z0-9]+(-[a-z0-9]+)+)", re.IGNORECASE)
-			if regex.match(container.name):
-				print(f"Stopping container {container.name}")
-				try:
-					container.stop()
-					container.remove()
-				except Exception as e:
-					print(f"Error stopping container {container.name}: {str(e)}")
+			match = regex.match(container.name)
+			if match:
+				hostlife_containers += 1
+				# Extract instance ID from container name
+				container_instance_id = container.name.replace("hostlife_generated_", "")
+				
+				if app:
+					# If container doesn't have a corresponding instance in the database, remove it
+					if container_instance_id not in instance_ids:
+						orphaned_containers += 1
+						print(f"Removing orphaned container {container.name} (status: {container.status})")
+						try:
+							container.stop()
+							container.remove()
+						except Exception as e:
+							print(f"Error removing container {container.name}: {str(e)}")
+					else:
+						# If container is stopped, restart it
+						if container.status != "running":
+							restarted_containers += 1
+							print(f"Restarting container {container.name} (status: {container.status})")
+							try:
+								container.restart()
+							except Exception as e:
+								print(f"Error restarting container {container.name}: {str(e)}")
+				else:
+					# Without app context, we can't check database, so just keep all containers
+					# If container is stopped, restart it
+					if container.status != "running":
+						restarted_containers += 1
+						print(f"Restarting container {container.name} (status: {container.status})")
+						try:
+							container.restart()
+						except Exception as e:
+							print(f"Error restarting container {container.name}: {str(e)}")
+		
+		print(f"Container cleanup complete: {hostlife_containers} hostlife containers found, {orphaned_containers} orphaned containers removed, {restarted_containers} containers restarted")
+							
 	except Exception as e:
-		print(f"Error listing containers: {str(e)}")
+		print(f"Error in container cleanup: {str(e)}")
 
 def force_pull_required_images():
-	"""Force pull all required images for hostlife (called during startup)"""
+	"""Force pull all required images for Hostlife (called during startup)"""
 	if not docker_client:
 		print("No Docker client available, skipping required image pull")
 		return
 		
 	try:
-		log("INFO", "Starting required image pull for hostlife...")
+		log("INFO", "Starting required image pull for Hostlife...")
 		
-		# Define all required images for hostlife
+		# Define all required images for Hostlife
 		required_images = [
 			# Guacamole image (always required)
 			{
-				"name": f"ghcr.io/zwpseudo/hostlife-guac:{__version__}",
+				"name": f"zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
@@ -113,11 +133,14 @@ def force_pull_required_images():
 		for droplet in droplets:
 			if droplet.container_docker_image is None:
 				continue
-			
-			image = build_full_image_name(droplet.container_docker_registry, droplet.container_docker_image)
-			if not image:
-				continue
-			
+				
+			# Construct full image name
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
+				registry = droplet.container_docker_registry.rstrip("/")
+				image = f"{registry}/{droplet.container_docker_image}"
+			else:
+				image = droplet.container_docker_image
+				
 			required_images.append({
 				"name": image,
 				"description": f"Droplet: {droplet.display_name}"
@@ -145,13 +168,13 @@ def force_pull_required_images():
 			except Exception as e:
 				log("ERROR", f"Error pulling required Docker image {image_name} ({description}): {e}")
 				
-		log("INFO", "Required image pull for hostlife completed")
+		log("INFO", "Required image pull for Hostlife completed")
 				
 	except Exception as e:
 		log("ERROR", f"Error in force_pull_required_images: {str(e)}")
 
 def pull_images():
-	"""Pull all required docker images for hostlife"""
+	"""Pull all required docker images for Hostlife"""
 	if not docker_client:
 		print("No Docker client available, skipping image pull")
 		return
@@ -159,11 +182,11 @@ def pull_images():
 	from models.droplet import Droplet
 	
 	try:
-		# Define all required images for hostlife
+		# Define all required images for Hostlife
 		required_images = [
 			# Guacamole image (always required)
 			{
-				"name": f"ghcr.io/zwpseudo/hostlife-guac:{__version__}",
+				"name": f"zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
@@ -173,11 +196,14 @@ def pull_images():
 		for droplet in droplets:
 			if droplet.container_docker_image is None:
 				continue
-		
-			image = build_full_image_name(droplet.container_docker_registry, droplet.container_docker_image)
-			if not image:
-				continue
-		
+				
+			# Construct full image name
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
+				registry = droplet.container_docker_registry.rstrip("/")
+				image = f"{registry}/{droplet.container_docker_image}"
+			else:
+				image = droplet.container_docker_image
+				
 			required_images.append({
 				"name": image,
 				"description": f"Droplet: {droplet.display_name}"
@@ -205,7 +231,7 @@ def pull_images():
 			except Exception as e:
 				log("ERROR", f"Error pulling required Docker image {image_name} ({description}): {e}")
 				
-		log("INFO", "Required image pull for hostlife completed")
+		log("INFO", "Required image pull for Hostlife completed")
 				
 	except Exception as e:
 		log("ERROR", f"Error in pull_images: {str(e)}")
@@ -216,7 +242,12 @@ def check_image_exists(registry, image_name):
 		return False
 	
 	try:
-		full_image = build_full_image_name(registry, image_name)
+		# Construct full image name
+		if registry and "ghcr.io" not in registry:
+			registry = registry.rstrip("/")
+			full_image = f"{registry}/{image_name}"
+		else:
+			full_image = image_name
 			
 		# Check if image exists locally
 		images = docker_client.images.list()
@@ -238,7 +269,12 @@ def pull_single_image(registry, image_name):
 		if not image_name or not image_name.strip():
 			return False, "Image name cannot be empty"
 		
-		full_image = build_full_image_name(registry, image_name)
+		# Construct full image name
+		if registry and "ghcr.io" not in registry:
+			registry = registry.rstrip("/")
+			full_image = f"{registry}/{image_name}"
+		else:
+			full_image = image_name
 			
 		# Extract tag from image name - handle multiple colons properly
 		if ":" in full_image:
@@ -273,7 +309,7 @@ def get_images_status():
 			{
 				"id": "guac",
 				"name": "Guacamole",
-				"image": f"ghcr.io/zwpseudo/hostlife-guac:{__version__}",
+				"image": f"zwpseudo/hostlife-guac:{__version__}",
 				"description": "Guacamole VNC Server"
 			}
 		]
@@ -283,11 +319,14 @@ def get_images_status():
 		for droplet in droplets:
 			if droplet.container_docker_image is None:
 				continue
-			
-			full_image = build_full_image_name(droplet.container_docker_registry, droplet.container_docker_image)
-			if not full_image:
-				continue
-			
+				
+			# Construct full image name
+			if droplet.container_docker_registry and "ghcr.io" not in droplet.container_docker_registry:
+				registry = droplet.container_docker_registry.rstrip("/")
+				full_image = f"{registry}/{droplet.container_docker_image}"
+			else:
+				full_image = droplet.container_docker_image
+				
 			required_images.append({
 				"id": droplet.id,
 				"name": droplet.display_name,
@@ -317,3 +356,47 @@ def get_images_status():
 	except Exception as e:
 		log("ERROR", f"Error getting images status: {str(e)}")
 		return {}
+
+def network_exists(network_name):
+	"""Check if a Docker network exists"""
+	if not docker_client:
+		return False
+	
+	try:
+		docker_client.networks.get(network_name)
+		return True
+	except docker.errors.NotFound:
+		return False
+	except Exception as e:
+		log("ERROR", f"Error checking network existence: {str(e)}")
+		return False
+
+def list_available_networks():
+	"""List all available Docker networks"""
+	if not docker_client:
+		return []
+	
+	try:
+		networks = docker_client.networks.list()
+		return [{"id": network.id, "name": network.name} for network in networks]
+	except Exception as e:
+		log("ERROR", f"Error listing networks: {str(e)}")
+		return []
+
+def get_network_for_droplet(droplet):
+	"""Get the appropriate network for a droplet, with fallback to default"""
+	if not docker_client:
+		return "hostlife_default_network"
+	
+	# If droplet has a specific network defined, use it
+	if droplet.container_network and droplet.container_network.strip():
+		network_name = droplet.container_network.strip()
+		
+		# Check if network exists
+		if network_exists(network_name):
+			return network_name
+		else:
+			log("WARNING", f"Network {network_name} specified for droplet {droplet.display_name} not found, falling back to default")
+	
+	# Default network
+	return "hostlife_default_network"
